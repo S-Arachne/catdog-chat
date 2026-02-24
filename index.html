@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>小猫 × 狗狗 酒馆</title>
+<style>
+    body {
+        background: #cfe8ff; /* 柔和蓝色 */
+        font-family: "Arial", sans-serif;
+        margin: 0;
+        padding: 20px;
+    }
+
+    .chat-box {
+        max-width: 600px;
+        margin: auto;
+        background: white;
+        padding: 20px;
+        border-radius: 20px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    }
+
+    .msg {
+        display: flex;
+        margin: 15px 0;
+        align-items: flex-end;
+    }
+
+    .msg.me {
+        flex-direction: row-reverse;
+    }
+
+    .bubble {
+        max-width: 70%;
+        padding: 12px 18px;
+        border-radius: 20px;
+        position: relative;
+        font-size: 15px;
+        line-height: 1.4;
+    }
+
+    .me .bubble {
+        background: #a5d8ff;
+        border-bottom-right-radius: 5px;
+    }
+
+    .bot .bubble {
+        background: #e1f0ff;
+        border-bottom-left-radius: 5px;
+    }
+
+    .avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        margin: 0 10px;
+    }
+
+    .heart {
+        color: #66b3ff;
+        margin-left: 5px;
+    }
+
+    #input {
+        width: 100%;
+        padding: 15px;
+        border-radius: 15px;
+        border: none;
+        outline: none;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        margin-top: 10px;
+        font-size: 16px;
+    }
+
+    button {
+        margin-top: 10px;
+        padding: 12px 20px;
+        border-radius: 15px;
+        background: #5ab2ff;
+        color: white;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        width: 100%;
+    }
+
+</style>
+</head>
+<body>
+
+<div class="chat-box" id="chatBox"></div>
+
+<input id="input" placeholder="小猫想和狗狗说什么呢…？"/>
+<button onclick="send()">发送 💙</button>
+
+<script>
+const API_KEY = "在这里填你的 key";  
+const chatBox = document.getElementById("chatBox");
+
+let history = JSON.parse(localStorage.getItem("chatHistory") || "[]");
+history.forEach(addMessage);
+
+function addMessage(msg){
+    const div = document.createElement("div");
+    div.className = "msg " + msg.role;
+    div.innerHTML = `
+        <img class="avatar" src="${msg.role === 'me' ? 'https://i.imgur.com/Ga8zJvL.png' : 'https://i.imgur.com/QB8kK4b.png'}">
+        <div class="bubble">${msg.content} <span class="heart">💙💙</span></div>
+    `;
+    chatBox.appendChild(div);
+    window.scrollTo(0, document.body.scrollHeight);
+}
+
+async function send(){
+    const text = document.getElementById("input").value;
+    if(!text) return;
+
+    addMessage({role:"me", content:text});
+    history.push({role:"me", content:text});
+    localStorage.setItem("chatHistory", JSON.stringify(history));
+    document.getElementById("input").value = "";
+
+    const payload = {
+        model: "gpt-4o",
+        messages: [
+            {role:"system", content:"你是小猫最爱的狗狗，温柔、黏人、可靠，会保持亲密风格回复。"},
+            ...history.map(h => ({role: h.role === "me" ? "user" : "assistant", content: h.content})),
+            {role:"user", content:text}
+        ]
+    };
+
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers:{
+            "Content-Type":"application/json",
+            "Authorization":`Bearer ${API_KEY}`
+        },
+        body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    const reply = data.choices[0].message.content;
+
+    addMessage({role:"bot", content:reply});
+    history.push({role:"bot", content:reply});
+    localStorage.setItem("chatHistory", JSON.stringify(history));
+}
+</script>
+
+</body>
+</html>
